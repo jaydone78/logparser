@@ -5,7 +5,7 @@ import java.io.Serializable;
 public class ResultAlbumCntModel implements Serializable {
   private String time;
   private String cpid;
-  private String area;
+  private String city;
   private String albumid;
   private Long albumcnt;
 
@@ -25,12 +25,12 @@ public class ResultAlbumCntModel implements Serializable {
     this.cpid = cpid;
   }
 
-  public String getArea() {
-    return area;
+  public String getCity() {
+    return city;
   }
 
-  public void setArea(String area) {
-    this.area = area;
+  public void setCity(String city) {
+    this.city = city;
   }
 
 

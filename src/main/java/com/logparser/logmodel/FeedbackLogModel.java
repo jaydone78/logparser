@@ -5,7 +5,7 @@ import java.io.Serializable;
 public class FeedbackLogModel implements Serializable {
   private String time;
   private String cpid;
-  private String area;
+  private String city;
   private String bucketnum;
   private String type;
   private Long cnt;
@@ -26,12 +26,12 @@ public class FeedbackLogModel implements Serializable {
     this.cpid = cpid;
   }
 
-  public String getArea() {
-    return area;
+  public String getCity() {
+    return city;
   }
 
-  public void setArea(String area) {
-    this.area = area;
+  public void setCity(String city) {
+    this.city = city;
   }
 
   public String getBucketnum() {

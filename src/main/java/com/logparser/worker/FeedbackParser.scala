@@ -8,14 +8,15 @@ import org.apache.log4j.Logger
 import org.apache.spark.{SparkConf, SparkContext}
 
 object FeedbackParser extends BaseParser {
-  val logger = Logger.getLogger(this.getClass)
+
+  val LOG = Logger.getLogger(this.getClass)
 
   def parseRecMonitor(sc: SparkContext, dateStr: String): Unit = {
 
     //2019-01-21 16:02:20,964 INFO [com.cmri.recengine.controller.FeedbackController] - trace_id=v1_1_1_1_null_1548054001205_025270776643817571 userid=13905183862 itemid=02|500023741 type=play operate_time=1548057740849
 
     if (!hdfsPathExits(sc, ConfigUtil.getFeedbackLogPath + dateStr + "/")) {
-      logger.info("recMonitor data path not exists!");
+      LOG.info("recMonitor data path not exists!");
       return
     }
 
@@ -25,7 +26,7 @@ object FeedbackParser extends BaseParser {
 
     val intoArray = feedbackLog.flatMap { line =>
       val words = line.split(" ")
-      if (words.length == feedbackLogLen)
+      if (words.length == FEEDBACK_LOG_LEN)
         Some(words)
       else None
     }
@@ -43,30 +44,30 @@ object FeedbackParser extends BaseParser {
     sc.broadcast(userWithCity)
 
     val midRes = intoArray.flatMap { line =>
-      if (!line(5).equalsIgnoreCase("catename=topitems")) {
-        try {
-          val trace = line(5).split("=")(1)
-          val tracelist = trace.split("_")
-          val cpid = tracelist(6).substring(0, 2)
-          val userid = line(6).split("=")(1)
-          val bucketnum = tracelist(1)
-          var area = "unk"
-          if (userWithCity.containsKey(userid))
-            area = userWithCity.get(userid)
+      try {
+        val trace = line(5).split("=")(1)
+        val tracelist = trace.split("_")
+        val cpid = tracelist(6).substring(0, 2)
+        val userid = line(6).split("=")(1)
+        val bucketnum = tracelist(1)
+        var area = "unk"
+        if (userWithCity.containsKey(userid))
+          area = userWithCity.get(userid)
 
-          // traceid userid itemid
-          val list = Array[String](line(5), line(6), line(7))
-          // (cpid area bucketnum, (type, (traceid ...)))
-          Some(cpid + " " + area + " " + bucketnum, (line(8), list))
-        } catch {
-          case e: Exception => {
-            logger.info("error parsing " + line.mkString(" "))
-            None
-          }
+        // traceid userid itemid
+        val list = Array[String](line(5), line(6), line(7))
+        // (cpid area bucketnum, (type, (traceid ...)))
+        Some(cpid + " " + area + " " + bucketnum, (line(8), list))
+      } catch {
+        case e: Exception => {
+          LOG.info("error parsing " + line.mkString(" "))
+          None
         }
-      } else None
+      }
     }
-    val displayCnt = midRes.flatMap { line =>
+
+    /** display cnt */
+    midRes.flatMap { line =>
       if (line._2._1.equalsIgnoreCase("type=display"))
         Some(line._1, line._2._2(2).split(",").length.toLong)
       else None
@@ -80,13 +81,16 @@ object FeedbackParser extends BaseParser {
 
         val model = new FeedbackLogModel
         model.setTime(dateStr)
-        model.setArea(area)
+        model.setCity(area)
         model.setBucketnum(bucketnum)
         model.setCpid(cpid)
         model.setType("display")
         model.setCnt(line._2)
+        FeedbackLogDao.addNewEntry(model)
       }
 
+
+    /** play cnt */
     midRes.flatMap { line =>
       if (line._2._1.equalsIgnoreCase("type=play"))
         Some(line._1, 1l)
@@ -101,13 +105,15 @@ object FeedbackParser extends BaseParser {
 
         val model = new FeedbackLogModel
         model.setTime(dateStr)
-        model.setArea(area)
+        model.setCity(area)
         model.setBucketnum(bucketnum)
         model.setCpid(cpid)
         model.setType("play")
         model.setCnt(line._2)
         FeedbackLogDao.addNewEntry(model)
       }
+
+    /** click cnt */
     midRes.flatMap { line =>
       if (line._2._1.equalsIgnoreCase("type=click"))
         Some(line._1, 1l)
@@ -122,7 +128,7 @@ object FeedbackParser extends BaseParser {
 
         val model = new FeedbackLogModel
         model.setTime(dateStr)
-        model.setArea(area)
+        model.setCity(area)
         model.setBucketnum(bucketnum)
         model.setCpid(cpid)
         model.setType("click")
@@ -130,9 +136,12 @@ object FeedbackParser extends BaseParser {
         FeedbackLogDao.addNewEntry(model)
       }
 
+
+    /** recnum */
     midRes.map {
       line => (line._1, line._2._2(0))
-    }.map(line => (line._1, 1l)).reduceByKey(_ + _)
+    }.map(line => (line._1, 1l))
+      .reduceByKey(_ + _)
       .foreach { line =>
         val words = line._1.split(" ")
 
@@ -142,7 +151,7 @@ object FeedbackParser extends BaseParser {
 
         val model = new FeedbackLogModel
         model.setTime(dateStr)
-        model.setArea(area)
+        model.setCity(area)
         model.setBucketnum(bucketnum)
         model.setCpid(cpid)
         model.setType("recnum")

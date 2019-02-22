@@ -51,6 +51,4 @@ public class ConfigUtil {
     res.put(words[0], words[1]);
     return res;
   }
-
-
 }
