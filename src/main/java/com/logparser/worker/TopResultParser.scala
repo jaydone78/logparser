@@ -56,7 +56,7 @@ object TopResultParser extends BaseParser {
           if (userWithCity.containsKey(userid))
             area = userWithCity.get(userid)
 
-          // traceid userid itemid
+          // traceid userid itemids
           val list = Array[String](line(6), line(7), line(8))
           // cpid area bucketnum
           Some(cpid + " " + area + " " + bucketnum, list)
@@ -65,16 +65,17 @@ object TopResultParser extends BaseParser {
     }
 
     val uv = midRes.map { line =>
-      (line._1, line._2(2))
+      (line._1, line._2(1))
     }.distinct()
       .map(line => (line._1, 1l))
       .reduceByKey(_ + _)
 
     val pv = midRes.map { line =>
-      (line._1, line._2(1))
+      (line._1, (line._2(1), line._2(2).split(",").length.toLong))
     }.distinct()
-      .map(line => (line._1, 1l))
+      .map(line => (line._1, line._2._2))
       .reduceByKey(_ + _)
+
 
     val albums = midRes.map { line =>
       (line._1, line._2(2))

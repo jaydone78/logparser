@@ -66,16 +66,17 @@ object SecResultParser extends BaseParser {
     }
 
     val uv = midRes.map { line =>
-      (line._1, line._2(2))
+      (line._1, line._2(1))
     }.distinct()
       .map(line => (line._1, 1l))
       .reduceByKey(_ + _)
 
     val pv = midRes.map { line =>
-      (line._1, line._2(1))
+      (line._1, (line._2(1), line._2(2).split(",").length.toLong))
     }.distinct()
-      .map(line => (line._1, 1l))
+      .map(line => (line._1, line._2._2))
       .reduceByKey(_ + _)
+
 
     val albums = midRes.map { line =>
       (line._1, line._2(2))

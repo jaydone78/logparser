@@ -1,7 +1,7 @@
 package com.logparser.worker
 
-import com.logparser.dao.FeedbackLogDao
-import com.logparser.logmodel.FeedbackLogModel
+import com.logparser.dao.{FeedbackLogCntModelDao, FeedbackLogModelDao}
+import com.logparser.logmodel.{FeedBackLogCntModel, FeedbackLogModel}
 import com.logparser.userdao.UserInfoDao
 import com.logparser.util.{ConfigUtil, TimeUtil}
 import org.apache.log4j.Logger
@@ -86,7 +86,7 @@ object FeedbackParser extends BaseParser {
         model.setCpid(cpid)
         model.setType("display")
         model.setCnt(line._2)
-        FeedbackLogDao.addNewEntry(model)
+        FeedbackLogModelDao.addNewEntry(model)
       }
 
 
@@ -110,7 +110,37 @@ object FeedbackParser extends BaseParser {
         model.setCpid(cpid)
         model.setType("play")
         model.setCnt(line._2)
-        FeedbackLogDao.addNewEntry(model)
+        FeedbackLogModelDao.addNewEntry(model)
+      }
+
+    /** top play cnt */
+    midRes.flatMap { line =>
+      if (line._2._1.equalsIgnoreCase("type=play")) {
+        val itemid = line._2._2(2)
+        Some(line._1 + " " + itemid, 1l)
+      }
+      else None
+    }.reduceByKey(_ + _)
+      .sortBy(_._2, false)
+      .take(TOP_SIZE)
+      .foreach { line =>
+        val words = line._1.split(" ")
+        if (words.length == 4) {
+          val cpid = words(0)
+          val city = words(1)
+          val bucketnum = words(2)
+          val albumid = words(3)
+
+          val model = new FeedBackLogCntModel
+          model.setTime(dateStr)
+          model.setCity(city)
+          model.setBucketnum(bucketnum)
+          model.setCpid(cpid)
+          model.setType("play")
+          model.setCnt(line._2)
+          model.setAlbumid(albumid)
+          FeedbackLogCntModelDao.addNewEntry(model)
+        }
       }
 
     /** click cnt */
@@ -133,9 +163,38 @@ object FeedbackParser extends BaseParser {
         model.setCpid(cpid)
         model.setType("click")
         model.setCnt(line._2)
-        FeedbackLogDao.addNewEntry(model)
+        FeedbackLogModelDao.addNewEntry(model)
       }
 
+    /** top click cnt */
+    midRes.flatMap { line =>
+      if (line._2._1.equalsIgnoreCase("type=click")) {
+        val itemid = line._2._2(2)
+        Some(line._1 + " " + itemid, 1l)
+      }
+      else None
+    }.reduceByKey(_ + _)
+      .sortBy(_._2, false)
+      .take(TOP_SIZE)
+      .foreach { line =>
+        val words = line._1.split(" ")
+        if (words.length == 4) {
+          val cpid = words(0)
+          val city = words(1)
+          val bucketnum = words(2)
+          val albumid = words(3)
+
+          val model = new FeedBackLogCntModel
+          model.setTime(dateStr)
+          model.setCity(city)
+          model.setBucketnum(bucketnum)
+          model.setCpid(cpid)
+          model.setType("click")
+          model.setCnt(line._2)
+          model.setAlbumid(albumid)
+          FeedbackLogCntModelDao.addNewEntry(model)
+        }
+      }
 
     /** recnum */
     midRes.map {
@@ -156,7 +215,7 @@ object FeedbackParser extends BaseParser {
         model.setCpid(cpid)
         model.setType("recnum")
         model.setCnt(line._2)
-        FeedbackLogDao.addNewEntry(model)
+        FeedbackLogModelDao.addNewEntry(model)
       }
 
   }
